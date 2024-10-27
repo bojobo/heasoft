@@ -81,7 +81,7 @@ RUN /bin/echo >> /home/heasoft/.bashrc \
 ENV PERLLIB=/opt/heasoft/lib/perl \
     PERL5LIB=/opt/heasoft/lib/perl \
     PYTHONPATH=/opt/heasoft/lib/python:/opt/heasoft/lib \
-    PATH=/opt/heasoft/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PATH=/opt/heasoft/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     HEADAS=/opt/heasoft \
     LHEASOFT=/opt/heasoft \
     FTOOLS=/opt/heasoft \
