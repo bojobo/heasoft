@@ -1,18 +1,13 @@
-FROM ubuntu:24.04
+FROM ubuntu:24.04 as base
 
 ARG version=6.34
 ENV HEASOFT_VERSION=${version}
 
-LABEL version="${version}" \
-      description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
-      maintainer="Bojan Todorkov"
-
 # Install HEASoft prerequisites
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update \
- && apt -y upgrade \
- && apt -y install \
-	gcc \
+RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
+	apt-get install -y --no-install-recommends \
+    gcc \
 	gfortran \
 	g++ \
 	curl \
@@ -27,7 +22,7 @@ RUN apt update \
 	perl-modules \
 	vim \
 	xorg-dev \
- && apt clean \
+ && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
@@ -36,16 +31,16 @@ RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
  && chown -R heasoft:heasoft /opt/heasoft \
  && chown -R heasoft:heasoft /opt/conda
 
-USER heasoft
-WORKDIR /home/heasoft
+FROM base as conda
 
-# Install conda
-ADD --chown=heasoft:heasoft https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh miniconda.sh
-RUN bash miniconda.sh -b -u -p /opt/conda && \
-    rm miniconda.sh
+# Install miniforge, which is same as miniconda, but it instead uses conda-forge as its only channel
+ADD --chown=heasoft:heasoft https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh miniforge.sh
+RUN bash miniforge.sh -b -u -p /opt/conda && \
+    rm miniforge.sh
 
 RUN /opt/conda/bin/conda install python=3.12 astropy numpy scipy matplotlib setuptools
 
+FROM conda as heasoft
 ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/opt/conda/bin/python
 RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
@@ -54,31 +49,28 @@ RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 COPY --chown=heasoft:heasoft heasoft-${HEASOFT_VERSION} heasoft-${HEASOFT_VERSION}/
 RUN cd heasoft-${HEASOFT_VERSION}/BUILD_DIR/ \
  && echo "Configuring heasoft..." \
- && ./configure --prefix=/opt/heasoft 2>&1 | tee ${HOME}/configure.log \
+ && ./configure --prefix=/opt/heasoft 2>&1 \
  && echo "Building heasoft..." \
- && make 2>&1 | tee ${HOME}/build.log \
+ && make 2>&1 \
  && echo "Installing heasoft..." \
- && make install 2>&1 | tee ${HOME}/install.log \
+ && make install 2>&1 \
  && /bin/bash -c 'cd /opt/heasoft/; for loop in *64*/*; do ln -sf $loop; done' \
  && /bin/bash -c 'cd /opt/heasoft/bin; if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc; then cp ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc .; fi' \
  && /bin/bash -c 'if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; then rm -rf ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; fi' \
  && cd /opt/heasoft/bin \
- && ln -sf ../BUILD_DIR/Makefile-std \
- && rm -rf ${HOME}/heasoft-${HEASOFT_VERSION}
+ && ln -sf ../BUILD_DIR/Makefile-std
 
-# Configure shells...
-RUN /bin/echo >> /home/heasoft/.bashrc \
- && /bin/echo '# Initialize HEASoft environment' >> /home/heasoft/.bashrc \
- && /bin/echo 'export HEADAS=/opt/heasoft' >> /home/heasoft/.bashrc \
- && /bin/echo '. $HEADAS/headas-init.sh' >> /home/heasoft/.bashrc \
- && /bin/echo >> /home/heasoft/.bashrc \
- && /bin/echo >> /home/heasoft/.profile \
- && /bin/echo '# Initialize HEASoft environment' >> /home/heasoft/.profile \
- && /bin/echo 'export HEADAS=/opt/heasoft' >> /home/heasoft/.profile \
- && /bin/echo '. $HEADAS/headas-init.sh' >> /home/heasoft/.profile \
- && /bin/echo >> /home/heasoft/.profile
+FROM base as final
 
-ENV PERLLIB=/opt/heasoft/lib/perl \
+LABEL version="${version}" \
+      description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
+      maintainer="Bojan Todorkov"
+
+COPY --from=conda --chown=heasoft:heasoft /opt/conda /opt/conda
+COPY --from=heasoft --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
+
+ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/opt/conda/bin/python \
+    PERLLIB=/opt/heasoft/lib/perl \
     PERL5LIB=/opt/heasoft/lib/perl \
     PYTHONPATH=/opt/heasoft/lib/python:/opt/heasoft/lib \
     PATH=/opt/heasoft/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
@@ -103,4 +95,5 @@ ENV PERLLIB=/opt/heasoft/lib/perl \
     XANADU=/opt/heasoft \
     XANBIN=/opt/heasoft
 
-CMD [ "fversion" ]
+USER heasoft
+WORKDIR /home/heasoft
