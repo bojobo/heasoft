@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 as base
+FROM python:3.12-slim-bookworm as base
 
 ARG version=6.34
 ENV HEASOFT_VERSION=${version}
@@ -27,21 +27,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
 
 RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
  && mkdir -p /opt/heasoft \
- && mkdir -p /opt/conda \
- && chown -R heasoft:heasoft /opt/heasoft \
- && chown -R heasoft:heasoft /opt/conda
+ && chown -R heasoft:heasoft /opt/heasoft
 
-FROM base as conda
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir astropy numpy scipy matplotlib setuptools
 
-# Install miniforge, which is same as miniconda, but it instead uses conda-forge as its only channel
-ADD --chown=heasoft:heasoft https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh miniforge.sh
-RUN bash miniforge.sh -b -u -p /opt/conda && \
-    rm miniforge.sh
+FROM base as heasoft
 
-RUN /opt/conda/bin/conda install python=3.12 astropy numpy scipy matplotlib setuptools
-
-FROM conda as heasoft
-ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/opt/conda/bin/python
+ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/usr/local/bin/python
 RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
@@ -66,14 +59,13 @@ LABEL version="${version}" \
       description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
       maintainer="Bojan Todorkov"
 
-COPY --from=conda --chown=heasoft:heasoft /opt/conda /opt/conda
 COPY --from=heasoft --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
 
-ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/opt/conda/bin/python \
+ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/usr/local/bin/python \
     PERLLIB=/opt/heasoft/lib/perl \
     PERL5LIB=/opt/heasoft/lib/perl \
     PYTHONPATH=/opt/heasoft/lib/python:/opt/heasoft/lib \
-    PATH=/opt/heasoft/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PATH=/opt/heasoft/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     HEADAS=/opt/heasoft \
     LHEASOFT=/opt/heasoft \
     FTOOLS=/opt/heasoft \
