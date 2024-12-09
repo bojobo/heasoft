@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm as base
+FROM python:3.12-slim-bookworm AS base
 
 ARG version=6.34
 ENV HEASOFT_VERSION=${version}
@@ -22,19 +22,19 @@ RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
 	perl-modules \
 	vim \
 	xorg-dev \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
- && mkdir -p /opt/heasoft \
- && chown -R heasoft:heasoft /opt/heasoft
+    && mkdir -p /opt/heasoft \
+    && chown -R heasoft:heasoft /opt/heasoft
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir astropy numpy scipy matplotlib setuptools
 
-FROM base as heasoft
+FROM base AS heasoft
 
-ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/usr/local/bin/python
+ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran
 RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
@@ -53,7 +53,7 @@ RUN cd heasoft-${HEASOFT_VERSION}/BUILD_DIR/ \
  && cd /opt/heasoft/bin \
  && ln -sf ../BUILD_DIR/Makefile-std
 
-FROM base as final
+FROM base AS final
 
 LABEL version="${version}" \
       description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
@@ -61,7 +61,7 @@ LABEL version="${version}" \
 
 COPY --from=heasoft --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
 
-ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYTHON=/usr/local/bin/python \
+ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran \
     PERLLIB=/opt/heasoft/lib/perl \
     PERL5LIB=/opt/heasoft/lib/perl \
     PYTHONPATH=/opt/heasoft/lib/python:/opt/heasoft/lib \
@@ -78,9 +78,6 @@ ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYT
     LHEA_DATA=/opt/heasoft/refdata \
     LHEA_HELP=/opt/heasoft/help \
     EXT=lnx \
-    PGPLOT_FONT=/opt/heasoft/lib/grfont.dat \
-    PGPLOT_RGB=/opt/heasoft/lib/rgb.txt \
-    PGPLOT_DIR=/opt/heasoft/lib \
     POW_LIBRARY=/opt/heasoft/lib/pow \
     XRDEFAULTS=/opt/heasoft/xrdefaults \
     TCLRL_LIBDIR=/opt/heasoft/lib \
@@ -89,3 +86,4 @@ ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran PERL=/usr/bin/perl PYT
 
 USER heasoft
 WORKDIR /home/heasoft
+RUN mkdir pfiles
