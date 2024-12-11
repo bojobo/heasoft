@@ -39,7 +39,7 @@ RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
 # make, install, clean up, and create symlinks....
-COPY --chown=heasoft:heasoft heasoft-${HEASOFT_VERSION} heasoft-${HEASOFT_VERSION}/
+ADD --chown=heasoft:heasoft heasoft-${HEASOFT_VERSION}src.tar ./
 RUN cd heasoft-${HEASOFT_VERSION}/BUILD_DIR/ \
  && echo "Configuring heasoft..." \
  && ./configure --prefix=/opt/heasoft 2>&1 \
