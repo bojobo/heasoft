@@ -1,7 +1,9 @@
-FROM python:3.12-slim-bookworm AS base
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
 ARG version=6.34
-ENV HEASOFT_VERSION=${version}
+ENV HEASOFT_VERSION=${version} \
+    UV_NO_CACHE=1 \
+    UV_SYSTEM_PYTHON=1
 
 # Install HEASoft prerequisites
 ENV DEBIAN_FRONTEND=noninteractive
@@ -29,8 +31,8 @@ RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
     && mkdir -p /opt/heasoft \
     && chown -R heasoft:heasoft /opt/heasoft
 
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir astropy numpy scipy matplotlib setuptools
+RUN uv pip install astropy numpy scipy matplotlib setuptools \
+    && uv cache clean
 
 FROM base AS heasoft
 
