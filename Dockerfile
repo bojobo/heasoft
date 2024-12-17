@@ -80,6 +80,9 @@ ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran \
     LHEA_DATA=/opt/heasoft/refdata \
     LHEA_HELP=/opt/heasoft/help \
     EXT=lnx \
+    PGPLOT_FONT=/opt/heasoft/lib/grfont.dat \
+    PGPLOT_RGB=/opt/heasoft/lib/rgb.txt \
+    PGPLOT_DIR=/opt/heasoft/lib \
     POW_LIBRARY=/opt/heasoft/lib/pow \
     XRDEFAULTS=/opt/heasoft/xrdefaults \
     TCLRL_LIBDIR=/opt/heasoft/lib \
