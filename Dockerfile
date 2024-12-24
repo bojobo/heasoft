@@ -34,26 +34,28 @@ RUN groupadd heasoft && useradd -r -m -g heasoft heasoft \
 RUN uv pip install astropy numpy scipy matplotlib setuptools \
     && uv cache clean
 
-FROM base AS heasoft
+FROM base AS heasoft_builder
 
 ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran
 RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
 # make, install, clean up, and create symlinks....
-ADD --chown=heasoft:heasoft heasoft-${HEASOFT_VERSION}src.tar ./
-RUN cd heasoft-${HEASOFT_VERSION}/BUILD_DIR/ \
- && echo "Configuring heasoft..." \
- && ./configure --prefix=/opt/heasoft 2>&1 \
- && echo "Building heasoft..." \
- && make 2>&1 \
- && echo "Installing heasoft..." \
- && make install 2>&1 \
- && /bin/bash -c 'cd /opt/heasoft/; for loop in *64*/*; do ln -sf $loop; done' \
- && /bin/bash -c 'cd /opt/heasoft/bin; if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc; then cp ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc .; fi' \
- && /bin/bash -c 'if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; then rm -rf ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; fi' \
- && cd /opt/heasoft/bin \
- && ln -sf ../BUILD_DIR/Makefile-std
+ADD --chown=heasoft:heasoft https://heasarc.gsfc.nasa.gov/FTP/software/lheasoft/lheasoft${version}/heasoft-${version}src.tar.gz ./
+RUN tar xfz heasoft-${version}src.tar.gz \
+    && cd heasoft-${version} \
+    && rm -r calet demo hitomixrism integral ixpe maxi nicer nustar suzaku swift
+
+WORKDIR /heasoft-${HEASOFT_VERSION}/BUILD_DIR/
+
+RUN ./configure --prefix=/opt/heasoft 2>&1
+RUN make 2>&1
+RUN make install 2>&1
+RUN /bin/bash -c 'cd /opt/heasoft/; for loop in *64*/*; do ln -sf $loop; done' \
+    && /bin/bash -c 'cd /opt/heasoft/bin; if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc; then cp ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/BUILD_DIR/hmakerc .; fi' \
+    && /bin/bash -c 'if test -f ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; then rm -rf ${HOME}/heasoft-${HEASOFT_VERSION}/Xspec/src/spectral; fi' \
+    && cd /opt/heasoft/bin \
+    && ln -sf ../BUILD_DIR/Makefile-std
 
 FROM base AS final
 
@@ -61,7 +63,7 @@ LABEL version="${version}" \
       description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
       maintainer="Bojan Todorkov"
 
-COPY --from=heasoft --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
+COPY --from=heasoft_builder --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
 
 ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran \
     PERLLIB=/opt/heasoft/lib/perl \
@@ -92,3 +94,4 @@ ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran \
 USER heasoft
 WORKDIR /home/heasoft
 RUN mkdir pfiles
+SHELL ["/bin/bash", "-c"]
