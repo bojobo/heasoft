@@ -9,16 +9,16 @@ ENV HEASOFT_VERSION=${version} \
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
 	apt-get install -y --no-install-recommends \
+    curl \
     gcc \
 	gfortran \
 	g++ \
-	curl \
 	libcurl4 \
 	libcurl4-gnutls-dev \
-	libncurses5-dev \
-	libreadline6-dev \
+    libdevel-checklib-perl \
 	libfile-which-perl \
-	libdevel-checklib-perl \
+    libncurses5-dev \
+	libreadline6-dev \
 	make \
 	ncurses-dev \
 	perl-modules \
