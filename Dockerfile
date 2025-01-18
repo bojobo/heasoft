@@ -1,6 +1,14 @@
+ARG version
+
+FROM scratch AS downloader
+
+ARG version
+
+ADD https://heasarc.gsfc.nasa.gov/FTP/software/lheasoft/lheasoft${version}/heasoft-${version}src.tar.gz ./
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
-ARG version=6.34
+ARG version
 ENV HEASOFT_VERSION=${version} \
     UV_NO_CACHE=1 \
     UV_SYSTEM_PYTHON=1
@@ -41,7 +49,7 @@ RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
 # make, install, clean up, and create symlinks....
-ADD --chown=heasoft:heasoft https://heasarc.gsfc.nasa.gov/FTP/software/lheasoft/lheasoft${version}/heasoft-${version}src.tar.gz ./
+COPY --from=downloader --chown=heasoft:heasoft heasoft-${version}src.tar.gz ./
 RUN tar xfz heasoft-${version}src.tar.gz \
     && cd heasoft-${version} \
     && rm -r calet demo hitomixrism integral ixpe maxi nicer nustar suzaku swift
