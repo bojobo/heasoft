@@ -27,6 +27,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           load: true
+          build-args: version=6.34
           tags: ${{ vars.DOCKER_USERNAME }}/heasoft:test
       - name: Test
         run: |
