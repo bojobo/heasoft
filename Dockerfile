@@ -1,16 +1,14 @@
-ARG version
+ARG HEASOFT_VERSION
 
 FROM scratch AS downloader
 
-ARG version
+ARG HEASOFT_VERSION
 
-ADD https://heasarc.gsfc.nasa.gov/FTP/software/lheasoft/lheasoft${version}/heasoft-${version}src.tar.gz ./
+ADD https://heasarc.gsfc.nasa.gov/FTP/software/lheasoft/lheasoft${HEASOFT_VERSION}/heasoft-${HEASOFT_VERSION}src.tar.gz heasoft.tar.gz
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
-ARG version
-ENV HEASOFT_VERSION=${version} \
-    UV_NO_CACHE=1 \
+ENV UV_NO_CACHE=1 \
     UV_SYSTEM_PYTHON=1
 
 # Install HEASoft prerequisites
@@ -25,6 +23,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
 	libcurl4-gnutls-dev \
     libdevel-checklib-perl \
 	libfile-which-perl \
+    libgsl-dev \
     libncurses5-dev \
 	libreadline6-dev \
 	make \
@@ -44,14 +43,16 @@ RUN uv pip install astropy numpy scipy matplotlib setuptools \
 
 FROM base AS heasoft_builder
 
+ARG HEASOFT_VERSION
+
 ENV CC=/usr/bin/gcc CXX=/usr/bin/g++ FC=/usr/bin/gfortran
 RUN unset CFLAGS CXXFLAGS FFLAGS LDFLAGS build_alias host_alias
 
 # Retrieve the HEASoft source code, unpack, configure,
 # make, install, clean up, and create symlinks....
-COPY --from=downloader --chown=heasoft:heasoft heasoft-${version}src.tar.gz ./
-RUN tar xfz heasoft-${version}src.tar.gz \
-    && cd heasoft-${version} \
+COPY --from=downloader --chown=heasoft:heasoft heasoft.tar.gz ./
+RUN tar xfz heasoft.tar.gz \
+    && cd heasoft-${HEASOFT_VERSION} \
     && rm -r calet demo hitomixrism integral ixpe maxi nicer nustar suzaku swift
 
 WORKDIR /heasoft-${HEASOFT_VERSION}/BUILD_DIR/
@@ -67,8 +68,10 @@ RUN /bin/bash -c 'cd /opt/heasoft/; for loop in *64*/*; do ln -sf $loop; done' \
 
 FROM base AS final
 
-LABEL version="${version}" \
-      description="HEASoft ${version} https://heasarc.gsfc.nasa.gov/lheasoft/" \
+ARG HEASOFT_VERSION
+
+LABEL version="${HEASOFT_VERSION}" \
+      description="HEASoft ${HEASOFT_VERSION} https://heasarc.gsfc.nasa.gov/lheasoft/" \
       maintainer="Bojan Todorkov"
 
 COPY --from=heasoft_builder --chown=heasoft:heasoft /opt/heasoft /opt/heasoft
